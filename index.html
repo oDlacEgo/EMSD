@@ -3,100 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Check Auth State</title>
+    <title>Firebase Test</title>
+    <!-- Firebase CDN -->
     <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js"></script>
 </head>
 <body>
-    <!-- Sekcja logowania -->
-    <div id="loginSection">
-        <h2>Login</h2>
-        <form id="loginForm">
-            <input type="email" id="email" placeholder="Email" required>
-            <input type="password" id="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
-        <p id="loginError"></p>
-    </div>
+    <h1>Firebase Realtime Database Test</h1>
 
-    <!-- Sekcja aplikacji -->
-    <div id="appSection" style="display: none;">
-        <h2>Welcome!</h2>
-        <button id="logoutButton">Logout</button>
-    </div>
+    <!-- Formularz do zapisywania danych -->
+    <form id="dataForm">
+        <input type="text" id="name" placeholder="Name" required />
+        <input type="text" id="message" placeholder="Message" required />
+        <button type="submit">Save Data</button>
+    </form>
 
- <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+    <!-- Sekcja do wyświetlania odczytanych danych -->
+    <h2>Odczytane dane:</h2>
+    <pre id="output"></pre>
 
+    <script>
         // Konfiguracja Firebase
         const firebaseConfig = {
-  apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
-  authDomain: "emsd-cef45.firebaseapp.com",
-  databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "emsd-cef45",
-  storageBucket: "emsd-cef45.firebasestorage.app",
-  messagingSenderId: "573007211940",
-  appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
+            apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
+            authDomain: "emsd-cef45.firebaseapp.com",
+            databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "emsd-cef45",
+            storageBucket: "emsd-cef45.firebasestorage.app",
+            messagingSenderId: "573007211940",
+            appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
         };
 
         // Inicjalizacja Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        // Nasłuchuj stanu logowania
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // Użytkownik jest zalogowany
-                console.log("Zalogowany jako:", user.email);
-                document.getElementById("loginSection").style.display = "none";
-                document.getElementById("appSection").style.display = "block";
-            } else {
-                // Brak zalogowanego użytkownika
-                console.log("Użytkownik nie jest zalogowany.");
-                document.getElementById("loginSection").style.display = "block";
-                document.getElementById("appSection").style.display = "none";
-            }
-        });
-
-        // Logowanie użytkownika
-        document.getElementById("loginForm").addEventListener("submit", (e) => {
+        // Obsługa formularza zapisywania danych
+        document.getElementById('dataForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
 
-            auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    console.log("Zalogowano:", userCredential.user.email);
-                })
-                .catch((error) => {
-                    console.error("Błąd logowania:", error.message);
-                    document.getElementById("loginError").innerText = error.message;
-                });
-        });
+            const name = document.getElementById('name').value;
+            const message = document.getElementById('message').value;
 
-        // Wylogowanie użytkownika
-        document.getElementById("logoutButton").addEventListener("click", () => {
-            auth.signOut().then(() => {
-                console.log("Wylogowano.");
+            // Zapisz dane do Realtime Database
+            db.ref('messages/').push({
+                name: name,
+                message: message
+            }).then(() => {
+                alert('Dane zapisane!');
+                document.getElementById('dataForm').reset();
+                readData(); // Odczytaj dane po zapisaniu
             }).catch((error) => {
-                console.error("Błąd wylogowania:", error.message);
+                console.error('Błąd zapisu:', error);
             });
         });
-		
-		import { getDatabase, ref, set } from "firebase/database";
 
-// Połącz się z Realtime Database
-const db = getDatabase();
+        // Funkcja do odczytu danych z bazy
+        function readData() {
+            db.ref('messages/').once('value').then((snapshot) => {
+                const output = document.getElementById('output');
+                output.innerText = ''; // Wyczyść dane
 
-// Test: Dodanie danych do bazy
-set(ref(db, 'test-path'), { test: "Firebase działa!" })
-    .then(() => console.log("Połączono z Realtime Database i dodano dane!"))
-    .catch((error) => console.error("Błąd połączenia z Realtime Database:", error.message));
+                snapshot.forEach((childSnapshot) => {
+                    const data = childSnapshot.val();
+                    output.innerText += `Name: ${data.name}, Message: ${data.message}\n`;
+                });
+            }).catch((error) => {
+                console.error('Błąd odczytu:', error);
+            });
+        }
 
-		
+        // Odczytaj dane przy załadowaniu strony
+        readData();
     </script>
 </body>
 </html>
