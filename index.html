@@ -80,6 +80,18 @@
                 console.error("Błąd wylogowania:", error.message);
             });
         });
+		
+		import { getDatabase, ref, set } from "firebase/database";
+
+// Połącz się z Realtime Database
+const db = getDatabase();
+
+// Test: Dodanie danych do bazy
+set(ref(db, 'test-path'), { test: "Firebase działa!" })
+    .then(() => console.log("Połączono z Realtime Database i dodano dane!"))
+    .catch((error) => console.error("Błąd połączenia z Realtime Database:", error.message));
+
+		
     </script>
 </body>
 </html>
