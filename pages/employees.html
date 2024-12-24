@@ -33,8 +33,24 @@
             width: 100%;
             font-size: 0.8em;
         }
+        .availability-table th:first-child, .availability-table td:first-child {
+            width: 10%;
+        }
+        .availability-table th:not(:first-child), .availability-table td:not(:first-child) {
+            width: 3%;
+        }
         .availability-table th, .availability-table td {
             word-wrap: break-word;
+        }
+        .shift-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .break-highlight {
+            background-color: orange;
         }
     </style>
 </head>
@@ -43,6 +59,13 @@
     <div class="form-container">
         <label for="employee-name">Dodaj pracownika:</label>
         <input type="text" id="employee-name" placeholder="Wpisz imię">
+        <label for="employee-shift">Wybierz zmianę:</label>
+        <select id="employee-shift">
+            <option value="green" style="color: green;">Green</option>
+            <option value="red" style="color: red;">Red</option>
+            <option value="blue" style="color: blue;">Blue</option>
+            <option value="purple" style="color: purple;">Purple</option>
+        </select>
         <button id="add-employee">Dodaj Pracownika</button>
     </div>
 
@@ -51,6 +74,7 @@
             <tr>
                 <th>Pracownik</th>
                 <th>Dostępność</th>
+                <th>Zmiana</th>
                 <th>Przerwa 1</th>
                 <th>Przerwa 2</th>
                 <th>Usuń</th>
@@ -117,6 +141,7 @@
 
         const addEmployeeButton = document.getElementById('add-employee');
         const employeeNameInput = document.getElementById('employee-name');
+        const employeeShiftSelect = document.getElementById('employee-shift');
         const employeeTable = document.getElementById('employee-table');
         const availabilityTable = document.getElementById('availability-table');
 
@@ -137,9 +162,22 @@
                     Object.keys(employees).forEach(id => {
                         const employee = employees[id];
                         addEmployeeRow(id, employee);
+                        addAvailabilityRow(employee);
                     });
                 }
             });
+        }
+
+        function addAvailabilityRow(employee) {
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${employee.name}</td>` +
+                times.map(time => {
+                    const isBreak = time === employee.break1 || time === employee.break2;
+                    const isAvailable = employee.available && !isBreak;
+                    return `<td class="${isBreak ? 'break-highlight' : ''}"><input type="checkbox" ${isAvailable ? 'checked' : ''} disabled></td>`;
+                }).join('');
+
+            availabilityTable.appendChild(row);
         }
 
         function saveEmployee(id, employee) {
@@ -152,6 +190,9 @@
             row.innerHTML = `
                 <td>${employee.name}</td>
                 <td><input type="checkbox" ${employee.available ? 'checked' : ''}></td>
+                <td>
+                    <span class="shift-color" style="background-color: ${employee.shift};"></span>${employee.shift}
+                </td>
                 <td>
                     <select>${generateBreakOptions(employee.break1)}</select>
                 </td>
@@ -189,6 +230,7 @@
 
         addEmployeeButton.addEventListener('click', () => {
             const employeeName = employeeNameInput.value.trim();
+            const employeeShift = employeeShiftSelect.value;
 
             if (employeeName) {
                 const employeesRef = ref(database, 'employees');
@@ -196,12 +238,14 @@
                 const employee = {
                     name: employeeName,
                     available: true,
+                    shift: employeeShift,
                     break1: "",
                     break2: ""
                 };
                 set(newEmployeeRef, employee);
 
                 employeeNameInput.value = '';
+                employeeShiftSelect.value = 'green';
             } else {
                 alert('Wprowadź imię');
             }
