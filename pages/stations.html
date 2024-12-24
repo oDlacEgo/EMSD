@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 1em;
+        }
+        h2 {
+            text-align: center;
+        }
+        .form-container {
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 0.5em;
+            text-align: center;
+        }
+        .editable {
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .editable input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <label for="station-name">Dodaj stację:</label>
+        <input type="text" id="station-name" placeholder="Wpisz nazwę stacji">
+        <label for="station-group">Grupa:</label>
+        <input type="text" id="station-group" placeholder="Wpisz nazwę grupy">
+        <label for="station-limit">Limit pracowników:</label>
+        <input type="number" id="station-limit" placeholder="Wpisz limit" min="1" value="1">
+        <label for="station-hour-limit">Limit godzin na pracownika:</label>
+        <input type="number" id="station-hour-limit" placeholder="Wpisz limit godzin" min="1" value="1">
+        <button id="add-station">Dodaj Stację</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Stacja</th>
+                <th>Grupa</th>
+                <th>Limit pracowników</th>
+                <th>Limit godzin/pracownik</th>
+                <th>Usuń</th>
+            </tr>
+        </thead>
+        <tbody id="station-table">
+            <!-- Rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script>
+        const addStationButton = document.getElementById('add-station');
+        const stationNameInput = document.getElementById('station-name');
+        const stationGroupInput = document.getElementById('station-group');
+        const stationLimitInput = document.getElementById('station-limit');
+        const stationHourLimitInput = document.getElementById('station-hour-limit');
+        const stationTable = document.getElementById('station-table');
+
+        // Load stations from localStorage
+        function loadStations() {
+            const stations = JSON.parse(localStorage.getItem('stations')) || [];
+            stations.forEach(station => addStationRow(station));
+        }
+
+        // Save stations to localStorage
+        function saveStations() {
+            const rows = stationTable.querySelectorAll('tr');
+            const stations = Array.from(rows).map(row => {
+                return {
+                    name: row.cells[0].textContent,
+                    group: row.cells[1].textContent,
+                    limit: row.cells[2].textContent,
+                    hourLimit: row.cells[3].textContent
+                };
+            });
+            localStorage.setItem('stations', JSON.stringify(stations));
+        }
+
+        // Make a cell editable
+        function makeCellEditable(cell) {
+            const originalContent = cell.textContent;
+            const input = document.createElement('input');
+            input.value = originalContent;
+            cell.textContent = '';
+            cell.appendChild(input);
+            input.focus();
+
+            input.addEventListener('blur', () => {
+                const newValue = input.value.trim();
+                cell.textContent = newValue || originalContent;
+                saveStations();
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            });
+        }
+
+        // Add station row
+        function addStationRow(station) {
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td>${station.name}</td>
+                <td>${station.group}</td>
+                <td class="editable">${station.limit}</td>
+                <td class="editable">${station.hourLimit}</td>
+                <td><button class="remove-station">Usuń</button></td>
+            `;
+
+            stationTable.appendChild(row);
+
+            const removeButton = row.querySelector('.remove-station');
+            removeButton.addEventListener('click', () => {
+                row.remove();
+                saveStations();
+            });
+
+            const editableCells = row.querySelectorAll('.editable');
+            editableCells.forEach(cell => {
+                cell.addEventListener('click', () => makeCellEditable(cell));
+            });
+        }
+
+        addStationButton.addEventListener('click', () => {
+            const stationName = stationNameInput.value.trim();
+            const stationGroup = stationGroupInput.value.trim();
+            const stationLimit = stationLimitInput.value.trim();
+            const stationHourLimit = stationHourLimitInput.value.trim();
+
+            if (stationName && stationGroup && stationLimit && stationHourLimit) {
+                const station = {
+                    name: stationName,
+                    group: stationGroup,
+                    limit: stationLimit,
+                    hourLimit: stationHourLimit
+                };
+
+                addStationRow(station);
+                saveStations();
+
+                stationNameInput.value = '';
+                stationGroupInput.value = '';
+                stationLimitInput.value = '1';
+                stationHourLimitInput.value = '1';
+            } else {
+                alert('Wprowadź wszystkie dane stacji!');
+            }
+        });
+
+        // Load stations on page load
+        loadStations();
+    </script>
+</body>
+</html>

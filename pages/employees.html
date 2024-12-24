@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 1em;
+        }
+        h2 {
+            text-align: center;
+        }
+        .form-container {
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 0.5em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <label for="employee-name">Dodaj pracownika:</label>
+        <input type="text" id="employee-name" placeholder="Wpisz imię">
+        <button id="add-employee">Dodaj Pracownika</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Pracownik</th>
+                <th>Dostępność</th>
+                <th>Przerwa 1</th>
+                <th>Przerwa 2</th>
+                <th>Usuń</th>
+            </tr>
+        </thead>
+        <tbody id="employee-table">
+            <!-- Rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <h2>Podgląd Dostępności</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Pracownik</th>
+                <th>8:00</th>
+                <th>8:30</th>
+                <th>9:00</th>
+                <th>9:30</th>
+                <th>10:00</th>
+                <th>10:30</th>
+                <th>11:00</th>
+                <th>11:30</th>
+                <th>12:00</th>
+                <th>12:30</th>
+                <th>13:00</th>
+                <th>13:30</th>
+                <th>14:00</th>
+                <th>14:30</th>
+                <th>15:00</th>
+                <th>15:30</th>
+                <th>16:00</th>
+                <th>16:30</th>
+                <th>17:00</th>
+                <th>17:30</th>
+                <th>18:00</th>
+                <th>18:30</th>
+                <th>19:00</th>
+                <th>19:30</th>
+            </tr>
+        </thead>
+        <tbody id="availability-table">
+            <!-- Availability rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script>
+        const addEmployeeButton = document.getElementById('add-employee');
+        const employeeNameInput = document.getElementById('employee-name');
+        const employeeTable = document.getElementById('employee-table');
+        const availabilityTable = document.getElementById('availability-table');
+
+        const times = ["8:00", "8:30", "9:00", "9:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"];
+
+        // Generate options for break times
+        function generateBreakOptions(selectedValue = null) {
+            return times.map(time => `<option value="${time}" ${selectedValue === time ? 'selected' : ''}>${time}</option>`).join('');
+        }
+
+        // Load employees from localStorage
+        function loadEmployees() {
+            const employees = JSON.parse(localStorage.getItem('employees')) || [];
+            employees.forEach(employee => addEmployeeRow(employee));
+            updateAvailabilityTable(employees);
+        }
+
+        // Save employees to localStorage
+        function saveEmployees() {
+            const rows = employeeTable.querySelectorAll('tr');
+            const employees = Array.from(rows).map(row => {
+                return {
+                    name: row.cells[0].textContent,
+                    available: row.cells[1].querySelector('input').checked,
+                    break1: row.cells[2].querySelector('select').value,
+                    break2: row.cells[3].querySelector('select').value
+                };
+            });
+            localStorage.setItem('employees', JSON.stringify(employees));
+            updateAvailabilityTable(employees);
+        }
+
+        // Add employee row
+        function addEmployeeRow(employee) {
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td>${employee.name}</td>
+                <td><input type="checkbox" ${employee.available ? 'checked' : ''}></td>
+                <td>
+                    <select>${generateBreakOptions(employee.break1)}</select>
+                </td>
+                <td>
+                    <select>${generateBreakOptions(employee.break2)}</select>
+                </td>
+                <td><button class="remove-employee">Usuń</button></td>
+            `;
+
+            employeeTable.appendChild(row);
+
+            const removeButton = row.querySelector('.remove-employee');
+            removeButton.addEventListener('click', () => {
+                row.remove();
+                saveEmployees();
+            });
+
+            const availabilityCheckbox = row.querySelector('input[type="checkbox"]');
+            availabilityCheckbox.addEventListener('change', saveEmployees);
+
+            const breakSelects = row.querySelectorAll('select');
+            breakSelects.forEach(select => select.addEventListener('change', saveEmployees));
+        }
+
+        // Update availability table
+        function updateAvailabilityTable(employees) {
+            availabilityTable.innerHTML = '';
+
+            employees.forEach(employee => {
+                const row = document.createElement('tr');
+
+                row.innerHTML = `<td>${employee.name}</td>` +
+                    times.map(time => {
+                        const isBreak = time === employee.break1 || time === employee.break2;
+                        const isChecked = employee.available && !isBreak;
+                        return `<td><input type="checkbox" ${isChecked ? 'checked' : ''} disabled></td>`;
+                    }).join('');
+
+                availabilityTable.appendChild(row);
+            });
+        }
+
+        addEmployeeButton.addEventListener('click', () => {
+            const employeeName = employeeNameInput.value.trim();
+
+            if (employeeName) {
+                const employee = {
+                    name: employeeName,
+                    available: true,
+                    break1: "",
+                    break2: ""
+                };
+
+                addEmployeeRow(employee);
+                saveEmployees();
+
+                employeeNameInput.value = '';
+            } else {
+                alert('Wprowadź imię');
+            }
+        });
+
+        // Load employees on page load
+        loadEmployees();
+    </script>
+</body>
+</html>

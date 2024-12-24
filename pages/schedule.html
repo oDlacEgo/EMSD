@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 1em;
+        }
+        h2 {
+            text-align: center;
+        }
+        .form-container {
+            text-align: center;
+            margin-bottom: 1em;
+        }
+        .employee-buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1em 0;
+        }
+        .employee-buttons button {
+            margin: 0.5em;
+            padding: 0.5em 1em;
+            cursor: grab;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .schedule-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 0.5em;
+            text-align: center;
+            height: 10px;
+        }
+        td.drop-target {
+            background-color: #e9e9e9;
+            position: relative;
+        }
+        td.drop-target.over {
+            background-color: #d3d3f3;
+        }
+        .highlighted {
+            background-color: #ffeeba;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <label for="time-slot">Godzina:</label>
+        <select id="time-slot">
+            <option value="8">8:00 - 9:00</option>
+            <option value="9">9:00 - 10:00</option>
+            <option value="10">10:00 - 11:00</option>
+            <option value="11">11:00 - 12:00</option>
+            <option value="12">12:00 - 13:00</option>
+            <option value="13">13:00 - 14:00</option>
+            <option value="14">14:00 - 15:00</option>
+            <option value="15">15:00 - 16:00</option>
+            <option value="16">16:00 - 17:00</option>
+            <option value="17">17:00 - 18:00</option>
+            <option value="18">18:00 - 19:00</option>
+            <option value="19">19:00 - 20:00</option>
+        </select>
+        <button id="show-employees">Pokaż Pracowników</button>
+        <button id="reset-schedule">Resetuj Harmonogram</button>
+    </div>
+
+    <div class="employee-buttons" id="employee-buttons">
+        <!-- Employee buttons will be dynamically added here -->
+    </div>
+
+    <div class="schedule-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Grupa</th>
+                    <th>Stacja / Godzina</th>
+                    <th>8:00 - 9:00</th>
+                    <th>9:00 - 10:00</th>
+                    <th>10:00 - 11:00</th>
+                    <th>11:00 - 12:00</th>
+                    <th>12:00 - 13:00</th>
+                    <th>13:00 - 14:00</th>
+                    <th>14:00 - 15:00</th>
+                    <th>15:00 - 16:00</th>
+                    <th>16:00 - 17:00</th>
+                    <th>17:00 - 18:00</th>
+                    <th>18:00 - 19:00</th>
+                    <th>19:00 - 20:00</th>
+                </tr>
+            </thead>
+            <tbody id="schedule-table">
+                <!-- Schedule rows will be dynamically added here -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const timeSlotSelect = document.getElementById('time-slot');
+        const employeeButtonsContainer = document.getElementById('employee-buttons');
+        const scheduleTable = document.getElementById('schedule-table');
+        const showEmployeesButton = document.getElementById('show-employees');
+        const resetScheduleButton = document.getElementById('reset-schedule');
+
+        let assignedEmployees = JSON.parse(localStorage.getItem('assignedEmployees')) || {};
+
+        function loadOptions() {
+            const stations = JSON.parse(localStorage.getItem('stations')) || [];
+
+            stations.sort((a, b) => a.group.localeCompare(b.group));
+
+            stations.forEach(station => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${station.group || ''}</td><td>${station.name}</td>` + 
+                new Array(12).fill('<td class="drop-target"></td>').join('');
+                scheduleTable.appendChild(row);
+            });
+
+            Object.keys(assignedEmployees).forEach(hour => {
+                assignedEmployees[hour].forEach(({ employee, station }) => {
+                    const row = Array.from(scheduleTable.rows).find(row => row.cells[1].textContent === station);
+                    if (row) {
+                        const cellIndex = parseInt(hour) - 7 + 1;
+                        const cell = row.cells[cellIndex];
+                        if (cell) {
+                            cell.textContent = (cell.textContent ? cell.textContent + ', ' : '') + employee;
+                            cell.classList.add('assigned');
+                        }
+                    }
+                });
+            });
+        }
+
+        function showEmployees() {
+            const employees = JSON.parse(localStorage.getItem('employees')) || [];
+            const currentHour = timeSlotSelect.value;
+            employeeButtonsContainer.innerHTML = '';
+
+            employees.forEach(employee => {
+                if (employee.available && !isEmployeeAssigned(employee.name, currentHour)) {
+                    const button = document.createElement('button');
+                    button.textContent = employee.name;
+                    button.dataset.hour = currentHour;
+                    button.draggable = true;
+                    button.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', JSON.stringify({
+                            name: employee.name,
+                            hour: currentHour
+                        }));
+                    });
+                    employeeButtonsContainer.appendChild(button);
+                }
+            });
+            highlightColumn(currentHour);
+        }
+
+        function isEmployeeAssigned(employeeName, hour) {
+            return assignedEmployees[hour]?.some(assignment => assignment.employee === employeeName);
+        }
+
+        function highlightColumn(hour) {
+            const table = scheduleTable.closest('table');
+            table.querySelectorAll('td, th').forEach(cell => {
+                cell.classList.remove('highlighted');
+            });
+
+            const columnIndex = parseInt(hour) - 6;
+            table.querySelectorAll(`thead th:nth-child(${columnIndex}), tbody td:nth-child(${columnIndex})`).forEach(cell => {
+                cell.classList.add('highlighted');
+            });
+        }
+
+        function enableDragAndDrop() {
+            const dropTargets = document.querySelectorAll('.drop-target');
+
+            dropTargets.forEach(cell => {
+                cell.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    cell.classList.add('over');
+                });
+
+                cell.addEventListener('dragleave', () => {
+                    cell.classList.remove('over');
+                });
+
+                cell.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const { name: employeeName, hour: employeeHour } = JSON.parse(e.dataTransfer.getData('text/plain'));
+                    const row = cell.parentElement;
+                    const stationName = row.cells[1].textContent;
+                    const currentHour = timeSlotSelect.value;
+
+                    if (employeeHour !== currentHour) {
+                        alert('Pracownik może być przypisany tylko w wybranej godzinie.');
+                        return;
+                    }
+
+                    const stations = JSON.parse(localStorage.getItem('stations')) || [];
+                    const station = stations.find(s => s.name === stationName);
+
+                    if (!assignedEmployees[currentHour]) {
+                        assignedEmployees[currentHour] = [];
+                    }
+
+                    const currentAssignments = assignedEmployees[currentHour].filter(a => a.station === stationName);
+
+                    if (currentAssignments.length < station.limit) {
+                        assignedEmployees[currentHour].push({ employee: employeeName, station: stationName });
+                        localStorage.setItem('assignedEmployees', JSON.stringify(assignedEmployees));
+
+                        cell.textContent = (cell.textContent ? cell.textContent + ', ' : '') + employeeName;
+                        cell.classList.remove('over');
+
+                        showEmployees();
+                    } else {
+                        alert('Limit pracowników na stacji został osiągnięty!');
+                    }
+                });
+
+                cell.addEventListener('click', () => {
+                    const currentHour = timeSlotSelect.value;
+                    const employeeName = cell.textContent.trim().split(', ').pop();
+                    const stationName = cell.parentElement.cells[1].textContent;
+
+                    assignedEmployees[currentHour] = assignedEmployees[currentHour]?.filter(a => !(a.employee === employeeName && a.station === stationName));
+                    localStorage.setItem('assignedEmployees', JSON.stringify(assignedEmployees));
+
+                    cell.textContent = '';
+
+                    showEmployees();
+                });
+            });
+        }
+
+        resetScheduleButton.addEventListener('click', () => {
+            assignedEmployees = {};
+            localStorage.removeItem('assignedEmployees');
+            document.querySelectorAll('.drop-target').forEach(cell => {
+                cell.textContent = '';
+                cell.classList.remove('highlighted');
+            });
+            showEmployees();
+        });
+
+        showEmployeesButton.addEventListener('click', showEmployees);
+
+        loadOptions();
+        enableDragAndDrop();
+    </script>
+</body>
+</html>
