@@ -91,10 +91,21 @@
     </table>
 
     <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-        
-        const database = getDatabase();
-        const employeesRef = ref(database, 'employees');
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
+            authDomain: "emsd-cef45.firebaseapp.com",
+            databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "emsd-cef45",
+            storageBucket: "emsd-cef45.appspot.com",
+            messagingSenderId: "573007211940",
+            appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
 
         const addEmployeeButton = document.getElementById('add-employee');
         const employeeNameInput = document.getElementById('employee-name');
@@ -108,6 +119,7 @@
         }
 
         function loadEmployees() {
+            const employeesRef = ref(database, 'employees');
             onValue(employeesRef, (snapshot) => {
                 const employees = snapshot.val();
                 employeeTable.innerHTML = '';
@@ -171,6 +183,7 @@
             const employeeName = employeeNameInput.value.trim();
 
             if (employeeName) {
+                const employeesRef = ref(database, 'employees');
                 const newEmployeeRef = push(employeesRef);
                 const employee = {
                     name: employeeName,
