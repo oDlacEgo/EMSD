@@ -28,6 +28,14 @@
             padding: 0.5em;
             text-align: center;
         }
+        .availability-table {
+            table-layout: fixed;
+            width: 100%;
+            font-size: 0.8em;
+        }
+        .availability-table th, .availability-table td {
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
@@ -55,7 +63,7 @@
 
     <h2>Podgląd Dostępności</h2>
 
-    <table>
+    <table class="availability-table">
         <thead>
             <tr>
                 <th>Pracownik</th>
