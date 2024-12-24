@@ -57,27 +57,27 @@
 <body>
 
     <div class="form-container">
-        <label for="employee-name">Dodaj pracownika:</label>
-        <input type="text" id="employee-name" placeholder="Wpisz imię">
-        <label for="employee-shift">Wybierz zmianę:</label>
+        <label for="employee-name">Add Employee:</label>
+        <input type="text" id="employee-name" placeholder="Enter name">
+        <label for="employee-shift">Select Shift:</label>
         <select id="employee-shift">
             <option value="green" style="color: green;">Green</option>
             <option value="red" style="color: red;">Red</option>
             <option value="blue" style="color: blue;">Blue</option>
             <option value="purple" style="color: purple;">Purple</option>
         </select>
-        <button id="add-employee">Dodaj Pracownika</button>
+        <button id="add-employee">Add Employee</button>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>Pracownik</th>
-                <th>Dostępność</th>
-                <th>Zmiana</th>
-                <th>Przerwa 1</th>
-                <th>Przerwa 2</th>
-                <th>Usuń</th>
+                <th>Employee</th>
+                <th>Availability</th>
+                <th>Shift</th>
+                <th>Break 1</th>
+                <th>Break 2</th>
+                <th>Remove</th>
             </tr>
         </thead>
         <tbody id="employee-table">
@@ -85,12 +85,12 @@
         </tbody>
     </table>
 
-    <h2>Podgląd Dostępności</h2>
+    <h2>Availability Overview</h2>
 
     <table class="availability-table">
         <thead>
             <tr>
-                <th>Pracownik</th>
+                <th>Employee</th>
                 <th>8:00</th>
                 <th>8:30</th>
                 <th>9:00</th>
@@ -199,7 +199,7 @@
                 <td>
                     <select>${generateBreakOptions(employee.break2)}</select>
                 </td>
-                <td><button class="remove-employee">Usuń</button></td>
+                <td><button class="remove-employee">Remove</button></td>
             `;
 
             employeeTable.appendChild(row);
@@ -247,7 +247,7 @@
                 employeeNameInput.value = '';
                 employeeShiftSelect.value = 'green';
             } else {
-                alert('Wprowadź imię');
+                alert('Enter a valid name.');
             }
         });
 
