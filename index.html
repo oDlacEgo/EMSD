@@ -3,78 +3,491 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Firebase Test</title>
-    <!-- Firebase CDN -->
-    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-database.js"></script>
+    <title>Work Schedule Manager</title>
+    <style>
+        body {
+            font-family: 'Open Sans', Arial, sans-serif;
+            margin: 2px;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        th, td {
+            padding: 3px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+		.station-column {
+		font-weight: bold;		
+		}
+
+        .button {
+            padding: 1px 8px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        select {
+            width: 70%;
+            font-size: 12px;
+        }
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            margin-top: 20px;
+        }
+        .form-inline {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            width: 50%;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 12px;
+        }
+        #employeeListTable {
+            width: 50%;
+        }
+        #scheduleTable {
+            width: 100%;
+        }
+        .spacer {
+            margin-bottom: 30px;
+        }
+        #scheduleTable td, #scheduleTable th {
+            padding: 2px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        #employeeListTable td, #employeeListTable th {
+            padding: 3px;
+            font-size: 12px;
+        }
+
+        #stationsList tr:hover, #employeesList tr:hover {
+            background-color: #c9c9c9;
+        }
+
+        #stationsList button:hover, #employeesList button:hover {
+            background-color: #45a049;
+        }
+
+        #employeeName {
+            font-size: 12px;
+            padding: 3px;
+            width: 120px;
+        }
+
+        #employeeColor {
+            font-size: 12px;
+            padding: 3px;
+            width: 100%;
+        }
+
+        #addEmployeeBtn {
+            font-size: 12px;
+            padding: 3px 8px;
+        }
+
+        .highlight {
+            background-color: red !important;
+            color: white !important;
+        }
+        .highlight-orange {
+            background-color: orange !important;
+            color: white !important;
+        }
+        .group-color-1 {
+            background-color: #fbe9e7;
+        }
+        .group-color-2 {
+            background-color: #e8f5e9;
+        }
+        .group-color-3 {
+            background-color: #e3f2fd;
+        }
+        .group-color-4 {
+            background-color: #fdf9e3;
+        }
+    </style>
 </head>
 <body>
-    <h1>Firebase Realtime Database Test</h1>
 
-    <!-- Formularz do zapisywania danych -->
-    <form id="dataForm">
-        <input type="text" id="name" placeholder="Name" required />
-        <input type="text" id="message" placeholder="Message" required />
-        <button type="submit">Save Data</button>
+    <table id="scheduleTable">
+        <thead>
+            <tr>
+                <th>G</th>
+                <th class="station-column">Station</th>
+                <th>08:00</th>
+                <th>09:00</th>
+                <th>10:00</th>
+                <th>11:00</th>
+                <th>12:00</th>
+                <th>13:00</th>
+                <th>14:00</th>
+                <th>15:00</th>
+                <th>16:00</th>
+                <th>17:00</th>
+                <th>18:00</th>
+                <th>19:00</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="stationsList"></tbody>
+    </table>
+
+    <div>
+        <button class="button" id="addStationBtn">Add Station</button>
+        <button class="button" id="resetScheduleBtn">Reset Schedule</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <h2>Employees</h2>
+    <table id="employeeListTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Available</th>
+                <th>Shift</th>
+                <th>Assigned Stations</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="employeesList"></tbody>
+    </table>
+
+    <h2>Add Employee</h2>
+    <form id="addEmployeeForm" class="form-inline">
+        <label for="employeeName">Name:</label>
+        <input type="text" id="employeeName" required>
+
+        <label for="employeeColor"></label>
+        <select id="employeeColor" required>
+            <option value="green" selected>Green</option>
+            <option value="blue">Blue</option>
+            <option value="red">Red</option>
+            <option value="purple">Purple</option>
+        </select>
+
+        <button type="button" class="button" id="addEmployeeBtn">Add Employee</button>
     </form>
 
-    <!-- Sekcja do wyświetlania odczytanych danych -->
-    <h2>Odczytane dane:</h2>
-    <pre id="output"></pre>
+    <div class="footer">
+        <p>Created by Damian &copy; 2024</p>
+    </div>
 
-    <script>
-        // Konfiguracja Firebase
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, set, get, onValue, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
         const firebaseConfig = {
-            apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
-            authDomain: "emsd-cef45.firebaseapp.com",
-            databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "emsd-cef45",
-            storageBucket: "emsd-cef45.firebasestorage.app",
-            messagingSenderId: "573007211940",
-            appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
+			apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
+			authDomain: "emsd-cef45.firebaseapp.com",
+			databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
+			projectId: "emsd-cef45",
+			storageBucket: "emsd-cef45.firebasestorage.app",
+			messagingSenderId: "573007211940",
+			appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
         };
 
-        // Inicjalizacja Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
 
-        // Obsługa formularza zapisywania danych
-        document.getElementById('dataForm').addEventListener('submit', function (e) {
-            e.preventDefault();
+        let employees = {};
+        let stations = {};
 
-            const name = document.getElementById('name').value;
-            const message = document.getElementById('message').value;
+        function loadEmployees() {
+            const employeesRef = ref(database, 'employees');
+            onValue(employeesRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    employees = snapshot.val();
+                    const employeesList = document.getElementById('employeesList');
+                    employeesList.innerHTML = '';
 
-            // Zapisz dane do Realtime Database
-            db.ref('messages/').push({
-                name: name,
-                message: message
-            }).then(() => {
-                alert('Dane zapisane!');
-                document.getElementById('dataForm').reset();
-                readData(); // Odczytaj dane po zapisaniu
-            }).catch((error) => {
-                console.error('Błąd zapisu:', error);
-            });
-        });
+                    for (const employee in employees) {
+                        const row = document.createElement('tr');
+                        const nameCell = document.createElement('td');
+                        nameCell.textContent = employee;
+                        row.appendChild(nameCell);
 
-        // Funkcja do odczytu danych z bazy
-        function readData() {
-            db.ref('messages/').once('value').then((snapshot) => {
-                const output = document.getElementById('output');
-                output.innerText = ''; // Wyczyść dane
+                        const availableCell = document.createElement('td');
+                        const availableCheckbox = document.createElement('input');
+                        availableCheckbox.type = 'checkbox';
+                        availableCheckbox.checked = employees[employee].available || false;
+                        availableCheckbox.addEventListener('change', () => {
+                            employees[employee].available = availableCheckbox.checked;
+                            set(ref(database, 'employees/' + employee), employees[employee]);
+                        });
+                        availableCell.appendChild(availableCheckbox);
+                        row.appendChild(availableCell);
 
-                snapshot.forEach((childSnapshot) => {
-                    const data = childSnapshot.val();
-                    output.innerText += `Name: ${data.name}, Message: ${data.message}\n`;
-                });
-            }).catch((error) => {
-                console.error('Błąd odczytu:', error);
+                        const colorCell = document.createElement('td');
+                        colorCell.textContent = employees[employee].color;
+                        colorCell.style.backgroundColor = employees[employee].color;
+                        colorCell.style.color = 'white';
+                        row.appendChild(colorCell);
+
+                        const stationCell = document.createElement('td');
+                        const assignedStations = Object.keys(stations)
+                            .filter(station => {
+                                for (let hour = 8; hour <= 19; hour++) {
+                                    const hourKey = `hour_${hour}`;
+                                    if (stations[station][hourKey] === employee) {
+                                        return true;
+                                    }
+                                }
+                                return false;
+                            })
+                            .map(station => {
+                                let hoursWorked = 0;
+                                for (let hour = 8; hour <= 19; hour++) {
+                                    const hourKey = `hour_${hour}`;
+                                    if (stations[station][hourKey] === employee) {
+                                        hoursWorked++;
+                                    }
+                                }
+                                return `${station}: ${hoursWorked}`;
+                            })
+                            .join(', ');
+
+                        stationCell.textContent = assignedStations || 'No stations';
+
+                        row.appendChild(stationCell);
+
+                        const actionCell = document.createElement('td');
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.classList.add('button');
+                        deleteButton.addEventListener('click', () => {
+                            const confirmDelete = confirm(`Are you sure you want to delete the employee "${employee}"?`);
+                            if (confirmDelete) {
+                                remove(ref(database, 'employees/' + employee));
+                            }
+                        });
+                        actionCell.appendChild(deleteButton);
+                        row.appendChild(actionCell);
+
+                        employeesList.appendChild(row);
+                    }
+                }
             });
         }
 
-        // Odczytaj dane przy załadowaniu strony
-        readData();
+        function loadStations() {
+            const stationsRef = ref(database, 'stations');
+            onValue(stationsRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    stations = snapshot.val();
+
+                    // Sortowanie stacji według grup alfabetycznie
+                    const sortedStations = Object.keys(stations).sort((a, b) => {
+                        const groupA = stations[a].group?.toLowerCase() || '';
+                        const groupB = stations[b].group?.toLowerCase() || '';
+                        return groupA.localeCompare(groupB);
+                    });
+
+                    const stationsList = document.getElementById('stationsList');
+                    stationsList.innerHTML = '';
+
+                    let colorIndex = 0;
+                    const colors = ['group-color-1', 'group-color-2', 'group-color-3', 'group-color-4'];
+                    let previousGroup = '';
+
+                    sortedStations.forEach(station => {
+                        const group = stations[station].group || 'No Group';
+                        if (group !== previousGroup) {
+                            colorIndex = (colorIndex + 1) % colors.length;
+                            previousGroup = group;
+                        }
+
+                        const row = document.createElement('tr');
+                        row.classList.add(colors[colorIndex]);
+
+                        const groupCell = document.createElement('td');
+                        groupCell.textContent = group;
+                        row.appendChild(groupCell);
+
+						const stationCell = document.createElement('td');
+						stationCell.textContent = station;
+						stationCell.classList.add('station-column');
+						row.appendChild(stationCell);
+
+
+                        const stationData = stations[station];
+                        for (let hour = 8; hour <= 19; hour++) {
+                            const hourCell = document.createElement('td');
+                            const hourKey = `hour_${hour}`;
+                            const employeeName = stationData[hourKey];
+
+                            if (employeeName) {
+                                const employeeAssignments = Object.values(stationData).filter(name => name === employeeName).length;
+                                const limit = stationData.limit || 0;
+
+                                const nameField = document.createElement('div');
+                                nameField.textContent = employeeName;
+                                nameField.style.cursor = 'pointer';
+                                nameField.style.backgroundColor = employeeAssignments > limit ? 'orange' : employees[employeeName]?.color || 'transparent';
+                                nameField.style.color = 'white';
+                                nameField.addEventListener('click', () => removeAssignment(station, hourKey));
+                                hourCell.appendChild(nameField);
+                            } else {
+                                const employeeDropdown = document.createElement('select');
+                                const emptyOption = document.createElement('option');
+                                emptyOption.value = '';
+                                emptyOption.textContent = '';
+                                employeeDropdown.appendChild(emptyOption);
+
+                                for (const employee in employees) {
+                                    if (employees[employee].available && !isAssignedToHour(employee, hour)) {
+                                        const option = document.createElement('option');
+                                        option.value = employee;
+                                        option.textContent = employee;
+                                        employeeDropdown.appendChild(option);
+                                    }
+                                }
+
+                                employeeDropdown.value = '';
+                                employeeDropdown.addEventListener('change', () => {
+                                    const selectedEmployee = employeeDropdown.value;
+                                    if (selectedEmployee) {
+                                        assignTask(station, hourKey, selectedEmployee);
+                                    }
+                                });
+
+                                hourCell.appendChild(employeeDropdown);
+                            }
+
+                            row.appendChild(hourCell);
+                        }
+
+                        const actionCell = document.createElement('td');
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = '-';
+                        deleteButton.classList.add('button');
+                        deleteButton.addEventListener('click', () => deleteStation(station));
+                        actionCell.appendChild(deleteButton);
+
+                        const limitButton = document.createElement('button');
+                        limitButton.textContent = stations[station].limit || '0';
+                        limitButton.classList.add('button');
+                        limitButton.style.width = '30px';
+                        limitButton.style.backgroundColor = '#f0f0f0';
+                        limitButton.style.color = 'black';
+                        limitButton.addEventListener('click', () => {
+                            const newLimit = parseInt(prompt(`Enter new limit for ${station}:`, stations[station].limit || 0), 10);
+                            if (!isNaN(newLimit) && newLimit >= 0) {
+                                stations[station].limit = newLimit;
+                                set(ref(database, 'stations/' + station), stations[station]);
+                            }
+                        });
+                        actionCell.appendChild(limitButton);
+
+                        row.appendChild(actionCell);
+
+                        stationsList.appendChild(row);
+                    });
+                }
+            });
+        }
+
+        function isAssignedToHour(employee, hour) {
+            return Object.values(stations).some(station =>
+                Object.entries(station).some(([key, value]) =>
+                    key.startsWith('hour_') && parseInt(key.split('_')[1]) === hour && value === employee
+                )
+            );
+        }
+
+        function assignTask(station, time, employeeName) {
+            const stationData = stations[station] || {};
+            stationData[time] = employeeName;
+
+            set(ref(database, 'stations/' + station), stationData).then(() => {
+                loadStations();
+                loadEmployees();
+            });
+        }
+
+        function removeAssignment(station, time) {
+            const stationData = stations[station] || {};
+            delete stationData[time];
+            set(ref(database, 'stations/' + station), stationData).then(() => {
+                loadStations();
+                loadEmployees();
+            });
+        }
+
+        function deleteStation(station) {
+            const confirmDelete = confirm(`Are you sure you want to delete the station "${station}"?`);
+            if (confirmDelete) {
+                remove(ref(database, 'stations/' + station));
+            }
+        }
+
+        document.getElementById('addStationBtn').addEventListener('click', () => {
+            const stationName = prompt('Enter station name:');
+            const groupName = prompt('Enter group for this station:');
+            const limit = parseInt(prompt('Enter limit for station (default 5):'), 10) || 5;
+
+            if (stationName) {
+                const stationData = { group: groupName, limit: limit };
+                set(ref(database, 'stations/' + stationName), stationData);
+            }
+        });
+
+        document.getElementById('addEmployeeBtn').addEventListener('click', () => {
+            const name = document.getElementById('employeeName').value.trim();
+            const color = document.getElementById('employeeColor').value;
+
+            if (name && color) {
+                const employeeData = { available: true, color: color };
+                set(ref(database, 'employees/' + name), employeeData).then(() => {
+                    loadEmployees();
+                    document.getElementById('employeeName').value = '';
+                    document.getElementById('employeeColor').value = '';
+                });
+            } else {
+                alert('Please enter a valid name and select a shift color.');
+            }
+        });
+
+        document.getElementById('resetScheduleBtn').addEventListener('click', () => {
+            const confirmReset = confirm("Are you sure you want to reset the schedule?");
+            if (confirmReset) {
+                for (const station in stations) {
+
+                const stationData = stations[station];
+                    for (let hour = 8; hour <= 19; hour++) {
+                        const hourKey = `hour_${hour}`;
+                        delete stationData[hourKey];
+                    }
+                    set(ref(database, 'stations/' + station), stationData);
+                }
+                loadStations(); 
+            }
+        });
+
+        window.addEventListener('load', () => {
+            loadEmployees();
+            loadStations();
+        });
     </script>
+
 </body>
 </html>
