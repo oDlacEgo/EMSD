@@ -90,7 +90,12 @@
         </tbody>
     </table>
 
-    <script>
+    <script type="module">
+        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+        
+        const database = getDatabase();
+        const employeesRef = ref(database, 'employees');
+
         const addEmployeeButton = document.getElementById('add-employee');
         const employeeNameInput = document.getElementById('employee-name');
         const employeeTable = document.getElementById('employee-table');
@@ -98,35 +103,30 @@
 
         const times = ["8:00", "8:30", "9:00", "9:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"];
 
-        // Generate options for break times
         function generateBreakOptions(selectedValue = null) {
             return times.map(time => `<option value="${time}" ${selectedValue === time ? 'selected' : ''}>${time}</option>`).join('');
         }
 
-        // Load employees from localStorage
         function loadEmployees() {
-            const employees = JSON.parse(localStorage.getItem('employees')) || [];
-            employees.forEach(employee => addEmployeeRow(employee));
-            updateAvailabilityTable(employees);
-        }
+            onValue(employeesRef, (snapshot) => {
+                const employees = snapshot.val();
+                employeeTable.innerHTML = '';
+                availabilityTable.innerHTML = '';
 
-        // Save employees to localStorage
-        function saveEmployees() {
-            const rows = employeeTable.querySelectorAll('tr');
-            const employees = Array.from(rows).map(row => {
-                return {
-                    name: row.cells[0].textContent,
-                    available: row.cells[1].querySelector('input').checked,
-                    break1: row.cells[2].querySelector('select').value,
-                    break2: row.cells[3].querySelector('select').value
-                };
+                if (employees) {
+                    Object.keys(employees).forEach(id => {
+                        const employee = employees[id];
+                        addEmployeeRow(id, employee);
+                    });
+                }
             });
-            localStorage.setItem('employees', JSON.stringify(employees));
-            updateAvailabilityTable(employees);
         }
 
-        // Add employee row
-        function addEmployeeRow(employee) {
+        function saveEmployee(id, employee) {
+            set(ref(database, `employees/${id}`), employee);
+        }
+
+        function addEmployeeRow(id, employee) {
             const row = document.createElement('tr');
 
             row.innerHTML = `
@@ -145,32 +145,25 @@
 
             const removeButton = row.querySelector('.remove-employee');
             removeButton.addEventListener('click', () => {
-                row.remove();
-                saveEmployees();
+                remove(ref(database, `employees/${id}`));
             });
 
             const availabilityCheckbox = row.querySelector('input[type="checkbox"]');
-            availabilityCheckbox.addEventListener('change', saveEmployees);
+            availabilityCheckbox.addEventListener('change', () => {
+                employee.available = availabilityCheckbox.checked;
+                saveEmployee(id, employee);
+            });
 
             const breakSelects = row.querySelectorAll('select');
-            breakSelects.forEach(select => select.addEventListener('change', saveEmployees));
-        }
-
-        // Update availability table
-        function updateAvailabilityTable(employees) {
-            availabilityTable.innerHTML = '';
-
-            employees.forEach(employee => {
-                const row = document.createElement('tr');
-
-                row.innerHTML = `<td>${employee.name}</td>` +
-                    times.map(time => {
-                        const isBreak = time === employee.break1 || time === employee.break2;
-                        const isChecked = employee.available && !isBreak;
-                        return `<td><input type="checkbox" ${isChecked ? 'checked' : ''} disabled></td>`;
-                    }).join('');
-
-                availabilityTable.appendChild(row);
+            breakSelects.forEach((select, index) => {
+                select.addEventListener('change', () => {
+                    if (index === 0) {
+                        employee.break1 = select.value;
+                    } else {
+                        employee.break2 = select.value;
+                    }
+                    saveEmployee(id, employee);
+                });
             });
         }
 
@@ -178,15 +171,14 @@
             const employeeName = employeeNameInput.value.trim();
 
             if (employeeName) {
+                const newEmployeeRef = push(employeesRef);
                 const employee = {
                     name: employeeName,
                     available: true,
                     break1: "",
                     break2: ""
                 };
-
-                addEmployeeRow(employee);
-                saveEmployees();
+                set(newEmployeeRef, employee);
 
                 employeeNameInput.value = '';
             } else {
@@ -194,7 +186,6 @@
             }
         });
 
-        // Load employees on page load
         loadEmployees();
     </script>
 </body>
