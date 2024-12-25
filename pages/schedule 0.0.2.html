@@ -20,6 +20,9 @@
             border: 2px solid #007bff;
             border-radius: 5px;
             background-color: #e9f5ff;
+            border: 2px solid #007bff;
+            border-radius: 5px;
+            background-color: #e9f5ff;
             margin: 1em 0;
             text-align: center;
         }
@@ -174,7 +177,7 @@
             Object.keys(stationsData).forEach(stationId => {
                 const station = stationsData[stationId];
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}">${station.name} <span style='font-size: 0.8em; color: gray;'>[Limit: ${station.limit || 'N/A'}]</span></td>` +
+                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}">${station.name}</td>` +
                     new Array(12).fill(0).map((_, index) => {
                         const hour = index + 8;
                         const employees = (scheduleData[hour] && scheduleData[hour][station.name]?.employees) || [];
@@ -209,18 +212,9 @@
                     const stationName = cell.getAttribute('data-station');
                     const hour = cell.getAttribute('data-hour');
 
-                    if (isEmployeeAssigned(employeeName, hour)) {
-                        alert(`Employee ${employeeName} is already assigned for hour ${hour}.`);
-                        return;
-                    }
-
                     assignEmployeeToStation(employeeName, stationName, hour);
                 });
             });
-        }
-
-        function isEmployeeAssigned(employeeName, hour) {
-            return Object.values(scheduleData[hour] || {}).some(station => station.employees.includes(employeeName));
         }
 
         function enableStationAssignment() {
@@ -242,9 +236,7 @@
                     const stationName = stationCell.getAttribute('data-station');
 
                     for (let hour = 8; hour <= 19; hour++) {
-                        if (!isEmployeeAssigned(employeeName, hour)) {
-                            assignEmployeeToStation(employeeName, stationName, hour);
-                        }
+                        assignEmployeeToStation(employeeName, stationName, hour);
                     }
                 });
             });
