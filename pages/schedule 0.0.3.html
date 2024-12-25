@@ -9,7 +9,7 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 1em;
-            font-size: 0.8em;            
+            font-size: 0.8em;			
         }
         .employee-list {
             position: sticky;
@@ -28,10 +28,6 @@
             background-color: #f0f0f0;
             border: 1px solid #ccc;
             border-radius: 5px;
-        }
-        .employee-list button.used {
-            background-color: #ffcccc;
-            cursor: not-allowed;
         }
         .schedule-container {
             overflow-x: auto;
@@ -57,9 +53,6 @@
         .drop-target.over {
             background-color: #d3d3f3;
         }
-        .drop-target.selected {
-            background-color: #ffcccb;
-        }
         .station-name {
             cursor: pointer;
             font-weight: bold;
@@ -69,12 +62,6 @@
             font-weight: normal;
             color: inherit;
             text-decoration: none;
-        }
-        th.hour-cell {
-            cursor: pointer;
-        }
-        th.hour-cell.selected {
-            background-color: #ffebcc;
         }
     </style>
 </head>
@@ -89,18 +76,18 @@
                 <tr>
                     <th>G</th>
                     <th>Station / Hour</th>
-                    <th class="hour-cell">08:00 - 09:00</th>
-                    <th class="hour-cell">09:00 - 10:00</th>
-                    <th class="hour-cell">10:00 - 11:00</th>
-                    <th class="hour-cell">11:00 - 12:00</th>
-                    <th class="hour-cell">12:00 - 13:00</th>
-                    <th class="hour-cell">13:00 - 14:00</th>
-                    <th class="hour-cell">14:00 - 15:00</th>
-                    <th class="hour-cell">15:00 - 16:00</th>
-                    <th class="hour-cell">16:00 - 17:00</th>
-                    <th class="hour-cell">17:00 - 18:00</th>
-                    <th class="hour-cell">18:00 - 19:00</th>
-                    <th class="hour-cell">19:00 - 20:00</th>
+                    <th>08:00 - 09:00</th>
+                    <th>09:00 - 10:00</th>
+                    <th>10:00 - 11:00</th>
+                    <th>11:00 - 12:00</th>
+                    <th>12:00 - 13:00</th>
+                    <th>13:00 - 14:00</th>
+                    <th>14:00 - 15:00</th>
+                    <th>15:00 - 16:00</th>
+                    <th>16:00 - 17:00</th>
+                    <th>17:00 - 18:00</th>
+                    <th>18:00 - 19:00</th>
+                    <th>19:00 - 20:00</th>
                 </tr>
             </thead>
             <tbody id="schedule-table">
@@ -164,20 +151,11 @@
 
         function renderEmployeeList() {
             employeeList.innerHTML = '';
-            const selectedHour = document.querySelector('th.hour-cell.selected');
-            const hour = selectedHour ? parseInt(selectedHour.textContent.split(':')[0], 10) : null;
-
             Object.values(employeesData).forEach(employee => {
                 if (employee.available) {
                     const button = document.createElement('button');
                     button.textContent = employee.name;
                     button.draggable = true;
-
-                    if (hour && isEmployeeAssigned(employee.name, hour)) {
-                        button.classList.add('used');
-                        button.draggable = false;
-                    }
-
                     button.addEventListener('dragstart', (e) => {
                         e.dataTransfer.setData('text/plain', JSON.stringify({
                             name: employee.name
@@ -194,7 +172,7 @@
             Object.keys(stationsData).forEach(stationId => {
                 const station = stationsData[stationId];
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}">${station.name}</td>` +
+                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}">${station.name} <span style='font-size: 0.8em; color: gray;'>[${station.limit || 'N/A'}]</span></td>` +
                     new Array(12).fill(0).map((_, index) => {
                         const hour = index + 8;
                         const employees = (scheduleData[hour] && scheduleData[hour][station.name]?.employees) || [];
@@ -208,7 +186,6 @@
             enableDragAndDrop();
             enableStationAssignment();
             enableEmployeeRemoval();
-            enableHourHighlight();
         }
 
         function enableDragAndDrop() {
@@ -292,18 +269,6 @@
             });
         }
 
-        function enableHourHighlight() {
-            const hourCells = document.querySelectorAll('th.hour-cell');
-
-            hourCells.forEach(cell => {
-                cell.addEventListener('click', () => {
-                    hourCells.forEach(target => target.classList.remove('selected'));
-                    cell.classList.add('selected');
-                    renderEmployeeList();
-                });
-            });
-        }
-
         function assignEmployeeToStation(employeeName, stationName, hour) {
             if (!scheduleData[hour]) {
                 scheduleData[hour] = {};
@@ -311,6 +276,12 @@
 
             if (!scheduleData[hour][stationName]) {
                 scheduleData[hour][stationName] = { employees: [] };
+            }
+
+            const stationLimit = stationsData[stationName]?.limit || Infinity;
+            if (scheduleData[hour][stationName].employees.length >= stationLimit) {
+                alert(`Station ${stationName} has reached its limit of ${stationLimit} employees.`);
+                return;
             }
 
             scheduleData[hour][stationName].employees.push(employeeName);
