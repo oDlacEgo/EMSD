@@ -9,9 +9,7 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 1em;
-        }
-        h2 {
-            text-align: center;
+            font-size: 0.8em;			
         }
         .employee-list {
             position: sticky;
@@ -78,8 +76,8 @@
                 <tr>
                     <th>G</th>
                     <th>Station / Hour</th>
-                    <th>8:00 - 9:00</th>
-                    <th>9:00 - 10:00</th>
+                    <th>08:00 - 09:00</th>
+                    <th>09:00 - 10:00</th>
                     <th>10:00 - 11:00</th>
                     <th>11:00 - 12:00</th>
                     <th>12:00 - 13:00</th>
@@ -174,7 +172,7 @@
             Object.keys(stationsData).forEach(stationId => {
                 const station = stationsData[stationId];
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}">${station.name} <span style='font-size: 0.8em; color: gray;'>[Limit: ${station.limit || 'N/A'}]</span></td>` +
+                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}">${station.name} <span style='font-size: 0.8em; color: gray;'>[${station.limit || 'N/A'}]</span></td>` +
                     new Array(12).fill(0).map((_, index) => {
                         const hour = index + 8;
                         const employees = (scheduleData[hour] && scheduleData[hour][station.name]?.employees) || [];
