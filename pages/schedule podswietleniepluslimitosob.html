@@ -213,12 +213,11 @@
         function renderScheduleTable() {
             scheduleTable.innerHTML = '';
 
-            const sortedStations = Object.values(stationsData).sort((a, b) => a.group.localeCompare(b.group));
-
-            sortedStations.forEach(station => {
+            Object.keys(stationsData).forEach(stationId => {
+                const station = stationsData[stationId];
                 const row = document.createElement('tr');
 
-                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}"><strong>${station.name}</strong></td>` +
+                row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}"><strong>${station.name} (${station.limit || '∞'})</strong></td>` +
                     new Array(12).fill(0).map((_, index) => {
                         const hour = index + 8;
                         const employees = (scheduleData[hour]?.[station.name]?.employees) || [];
