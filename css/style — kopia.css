@@ -7,26 +7,26 @@ body {
 header {
     background-color: #333;
     color: white;
-    padding: 0.2em;
+    padding: 0.5em;
     text-align: center;
 }
 nav {
     display: flex;
     justify-content: space-around;
     background-color: #444;
-    padding: 0.2em 0;
+    padding: 0.5em 0;
 }
 nav a {
     color: white;
     text-decoration: none;
-    padding: 0.2em 0.5em;
+    padding: 0.5em 1em;
 }
 nav a:hover {
     background-color: #555;
 }
 main {
-    padding: 0em;
-    height: 95vh;
+    padding: 0.1em;
+    height: 90vh;
 }
 iframe {
     width: 100%;
