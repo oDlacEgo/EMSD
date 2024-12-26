@@ -102,7 +102,14 @@
                 stationTable.innerHTML = '';
 
                 if (stations) {
-                    Object.keys(stations).forEach((id) => {
+                    // Sort stations alphabetically by group
+                    const sortedStations = Object.keys(stations).sort((a, b) => {
+                        const groupA = stations[a].group.toLowerCase();
+                        const groupB = stations[b].group.toLowerCase();
+                        return groupA.localeCompare(groupB);
+                    });
+
+                    sortedStations.forEach((id) => {
                         addStationRow(id, stations[id]);
                     });
                 }
