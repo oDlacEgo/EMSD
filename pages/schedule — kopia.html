@@ -296,41 +296,26 @@
             });
         }
 
-function enableEmployeeRemoval() {
-    const assignedEmployees = document.querySelectorAll('.assigned-employee');
+        function enableEmployeeRemoval() {
+            const assignedEmployees = document.querySelectorAll('.assigned-employee');
 
-    assignedEmployees.forEach(employeeSpan => {
-        employeeSpan.addEventListener('click', () => {
-            const employeeName = employeeSpan.getAttribute('data-employee');
-            const cell = employeeSpan.closest('.drop-target');
-            const stationName = cell.getAttribute('data-station');
-            const hour = cell.getAttribute('data-hour');
+            assignedEmployees.forEach(employeeSpan => {
+                employeeSpan.addEventListener('click', () => {
+                    const employeeName = employeeSpan.getAttribute('data-employee');
+                    const cell = employeeSpan.closest('.drop-target');
+                    const stationName = cell.getAttribute('data-station');
+                    const hour = cell.getAttribute('data-hour');
 
-            // Pobierz listę pracowników dla danej stacji i godziny
-            const employees = scheduleData[hour][stationName]?.employees || [];
+                    scheduleData[hour][stationName].employees = scheduleData[hour][stationName].employees.filter(emp => emp !== employeeName);
 
-            // Usuń pracownika z listy
-            scheduleData[hour][stationName].employees = employees.filter(emp => emp !== employeeName);
-
-            // Sprawdź, czy po usunięciu lista pracowników jest pusta
-            if (scheduleData[hour][stationName].employees.length === 0) {
-                // Usuń tylko `target` z węzła, jeśli brak pracowników
-                delete scheduleData[hour][stationName].target;
-            }
-
-            // Zaktualizuj dane w bazie
-            set(ref(database, `schedule/${hour}/${stationName}`), scheduleData[hour][stationName])
-                .then(() => {
-                    renderEmployeeList();
-                    renderScheduleTable();
-                })
-                .catch(error => {
-                    console.error('Error updating schedule:', error);
+                    set(ref(database, `schedule/${hour}/${stationName}`), scheduleData[hour][stationName])
+                        .then(() => {
+                            renderEmployeeList();
+                            renderScheduleTable();
+                        });
                 });
-        });
-    });
-}
-
+            });
+        }
 
         function enableHourHighlight() {
             const hourCells = document.querySelectorAll('th.hour-cell');
