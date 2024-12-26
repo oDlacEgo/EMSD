@@ -4,9 +4,176 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Performance</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 1em;
+            font-size: 0.8em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.5em;
+            text-align: center;
+        }
+        td input {
+            width: 90%;
+            box-sizing: border-box;
+        }
+        td.disabled {
+            background-color: #f0f0f0;
+            pointer-events: none;
+        }
+        tr:hover {
+            background-color: #AAAAAA;
+        }
+    </style>
 </head>
 <body>
-    <h2>Wydajności</h2>
-    <p>Content for Wydajności.</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Group</th>
+                <th>Station</th>
+                <!-- Generate hour columns dynamically -->
+                <script>
+                    for (let hour = 8; hour <= 19; hour++) {
+                        document.write(`<th>${hour}:00</th>`);
+                    }
+                </script>
+                <th>Total Target</th>
+                <th>Downtime (h)</th>
+            </tr>
+        </thead>
+        <tbody id="schedule-table">
+            <!-- Rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
+            authDomain: "emsd-cef45.firebaseapp.com",
+            databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "emsd-cef45",
+            storageBucket: "emsd-cef45.appspot.com",
+            messagingSenderId: "573007211940",
+            appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        const scheduleTable = document.getElementById("schedule-table");
+
+        function loadSchedule() {
+            const stationsRef = ref(database, 'stations');
+            const scheduleRef = ref(database, 'schedule');
+
+            // Fetch stations
+            onValue(stationsRef, (stationsSnapshot) => {
+                const stationsData = stationsSnapshot.val();
+
+                // Fetch schedule
+                onValue(scheduleRef, (scheduleSnapshot) => {
+                    const scheduleData = scheduleSnapshot.val();
+                    scheduleTable.innerHTML = ''; // Clear table
+
+                    if (!stationsData || !scheduleData) return;
+
+                    // Prepare stations and sort them by group and name
+                    const filteredStations = Object.values(stationsData)
+                        .map(station => ({
+                            group: station.group || "Unknown",
+                            name: station.name
+                        }))
+                        .sort((a, b) => {
+                            if (a.group === b.group) {
+                                return a.name.localeCompare(b.name); // Sort by name within the same group
+                            }
+                            return a.group.localeCompare(b.group); // Sort by group
+                        });
+
+                    filteredStations.forEach(({ group, name }) => {
+                        const row = document.createElement("tr");
+                        row.setAttribute('data-station', name);
+                        row.innerHTML = `
+                            <td>${group}</td>
+                            <td>${name}</td>
+                            ${Array.from({ length: 12 }, (_, i) => {
+                                const hour = i + 8;
+                                const targetValue = parseInt(scheduleData?.[hour]?.[name]?.target || 0, 10);
+                                const employees = scheduleData?.[hour]?.[name]?.employees || {};
+                                const hasEmployees = Object.keys(employees).length > 0;
+
+                                if (hasEmployees || targetValue > 0) {
+                                    return `<td><input type="number" data-station="${name}" data-hour="${hour}" value="${targetValue}"></td>`;
+                                }
+                                return `<td class="disabled"></td>`;
+                            }).join("")}
+                            <td class="total-target">0</td>
+                            <td class="downtime">0</td>
+                        `;
+                        scheduleTable.appendChild(row);
+                    });
+
+                    // Add event listeners for input changes
+                    document.querySelectorAll('input[type="number"]').forEach(input => {
+                        const stationName = input.getAttribute('data-station');
+                        const hour = input.getAttribute('data-hour');
+
+                        input.addEventListener('change', (e) => {
+                            const value = parseInt(e.target.value, 10) || 0;
+                            set(ref(database, `schedule/${hour}/${stationName}/target`), value).then(() => {
+                                updateTotals(stationName, scheduleData);
+                            });
+                        });
+                    });
+
+                    // Initial totals update
+                    filteredStations.forEach(({ name }) => {
+                        updateTotals(name, scheduleData);
+                    });
+                });
+            });
+        }
+
+        function updateTotals(stationName, scheduleData) {
+            const row = document.querySelector(`[data-station="${stationName}"]`);
+            let totalTarget = 0; // Reset total target for each station
+            let downtime = 0; // Reset downtime for each station
+
+            Array.from({ length: 12 }, (_, i) => {
+                const hour = i + 8;
+                const employees = scheduleData?.[hour]?.[stationName]?.employees || {};
+                const hasEmployees = Object.keys(employees).length > 0;
+                const targetValue = parseInt(scheduleData?.[hour]?.[stationName]?.target || 0, 10);
+
+                // Add target values
+                totalTarget += targetValue;
+
+                // Count as downtime if no employees OR target is 0
+                if (!hasEmployees || targetValue === 0) {
+                    downtime++;
+                }
+            });
+
+            // Update table cells with calculated values
+            row.querySelector('.total-target').textContent = totalTarget;
+            row.querySelector('.downtime').textContent = downtime;
+        }
+
+        loadSchedule();
+    </script>
 </body>
 </html>
