@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,38 +9,78 @@
     body {
       font-family: Arial, sans-serif;
       margin: 0;
-      padding: 1em;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       font-size: 0.8em;
     }
+
+    .content {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1em;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1em;
+    }
+
+    .save-button {
+      padding: 0.5em 1em;
+      font-size: 1em;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    .save-button:hover {
+      background-color: #45a049;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 1em;
     }
-    table, th, td {
+
+    table,
+    th,
+    td {
       border: 1px solid #ccc;
     }
-    th, td {
+
+    th,
+    td {
       padding: 0.5em;
       text-align: center;
       vertical-align: top;
     }
+
     th {
       background-color: #f4f4f4;
       position: sticky;
       top: 0;
       z-index: 1;
     }
+
     tr:nth-child(even) {
       background-color: #f9f9f9;
     }
+
     tr:hover {
       background-color: #AAAAAA;
     }
+
     h1 {
       text-align: center;
       color: #333;
     }
+
     .large-break {
       display: inline-block;
       width: 1em;
@@ -50,28 +91,41 @@
     }
   </style>
 </head>
+
 <body>
-  <table id="performanceTable">
-    <thead>
-      <tr>
-        <th>Employee</th>
-        <th>Station</th>
-        <th>Hours</th>
-        <th>Targets</th>
-        <th>Total Working Hours</th>
-        <th>Total Target</th>
-        <th>Average Target/Hour</th>
-        <th>Breaks</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Data will be dynamically added here -->
-    </tbody>
-  </table>
+  <div class="content">
+    <div class="button-container">
+      <button class="save-button" onclick="saveTableAsCSV()">Save as CSV</button>
+    </div>
+    <table id="performanceTable">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Station</th>
+          <th>Hours</th>
+          <th>Targets</th>
+          <th>Total Working Hours</th>
+          <th>Total Target</th>
+          <th>Average Target/Hour</th>
+          <th>Breaks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Data will be dynamically added here -->
+      </tbody>
+    </table>
+  </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-    import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+    import {
+      initializeApp
+    } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      get,
+      child
+    } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
@@ -145,6 +199,12 @@
       return hourInt === break1Hour || hourInt === break2Hour;
     }
 
+    function formatHours(hours) {
+      const h = Math.floor(hours);
+      const m = Math.round((hours - h) * 60);
+      return `${h}:${m < 10 ? '0' : ''}${m}`;
+    }
+
     function displayPerformance(data, employeesData) {
       const tableBody = document.querySelector("#performanceTable tbody");
       tableBody.innerHTML = ""; // Clear the table
@@ -159,7 +219,6 @@
         }
 
         const stationKeys = Object.keys(stations);
-        let isFirstRow = true;
 
         stationKeys.forEach((station) => {
           const records = stations[station];
@@ -195,24 +254,19 @@
 
           const row = document.createElement("tr");
 
-          if (isFirstRow) {
-            // Add employee cell with rowspan
-            const employeeCell = document.createElement("td");
-            employeeCell.rowSpan = stationKeys.length;
-            employeeCell.textContent = employeeData.name;
-            row.appendChild(employeeCell);
-            isFirstRow = false;
-          }
+          // Add employee cell for each station row
+          const employeeCell = document.createElement("td");
+          employeeCell.textContent = employeeData.name;
+          row.appendChild(employeeCell);
 
           const stationCell = document.createElement("td");
           stationCell.textContent = station;
-          stationCell.rowSpan = 1; // Assuming no merge for simplicity
           row.appendChild(stationCell);
 
           row.innerHTML += `
             <td>${hours}</td>
             <td>${targets}</td>
-            <td>${effectiveTotalHours}</td>
+            <td>${formatHours(effectiveTotalHours)}</td>
             <td>${totalTarget}</td>
             <td>${avgTarget}</td>
             <td>${breaks}</td>
@@ -222,7 +276,30 @@
       });
     }
 
+    // Define the function in the global scope
+    window.saveTableAsCSV = function () {
+      const table = document.getElementById("performanceTable");
+      const rows = Array.from(table.querySelectorAll("tr"));
+      const csvContent = rows.map(row => {
+        const cells = Array.from(row.querySelectorAll("th, td"));
+        return cells.map(cell => cell.textContent).join(",");
+      }).join("\n");
+
+      const blob = new Blob([csvContent], {
+        type: 'text/csv'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.setAttribute("hidden", "");
+      a.setAttribute("href", url);
+      a.setAttribute("download", "performance_data.csv");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
     fetchData();
   </script>
 </body>
+
 </html>
