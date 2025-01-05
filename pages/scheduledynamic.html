@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule</title>
     <style>
+        /* Ogólny styl strony */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 1em;
             font-size: 0.8em;
         }
+
+        /* Lista pracowników (przycisków) na górze strony */
         .employee-list {
             position: sticky;
             top: 0;
@@ -21,6 +24,8 @@
             margin: 1em 0;
             text-align: center;
         }
+
+        /* Styl dla przycisków pracowników */
         .employee-list button {
             margin: 0.3em;
             padding: 0.3em 0.6em;
@@ -29,100 +34,116 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
+
+        /* Styl dla przycisków pracowników, którzy są już przypisani (nieaktywne) */
         .employee-list button.used {
             background-color: #ffcccc;
             cursor: not-allowed;
         }
+
+        /* Styl dla wyróżnionych przycisków pracowników */
         .employee-list button.highlighted-employee {
             background-color: #d1f7c4;
             border: 1px solid #28a745;
         }
+
+        /* Kontener dla tabeli harmonogramu z możliwością przewijania poziomego */
         .schedule-container {
             overflow-x: auto;
         }
+
+        /* Styl dla tabeli (harmonogramu) */
         table {
             width: 100%;
             border-collapse: collapse;
         }
+
+        /* Granice tabeli i komórek */
         table, th, td {
             border: 1px solid #ccc;
         }
+
+        /* Styl dla komórek tabeli (w tym nagłówków) */
         th, td {
             padding: 0.5em;
             text-align: center;
         }
+
+        /* Styl dla wyróżnionych wierszy (np. po kliknięciu) */
         .highlighted {
             background-color: #ffeeba;
         }
+
+        /* Styl dla komórek, które są docelowymi miejscami na przeciąganie */
         .drop-target {
             background-color: #e9e9e9;
             position: relative;
         }
+
+        /* Styl dla komórek podczas przeciągania (gdy myszka jest nad nimi) */
         .drop-target.over {
             background-color: #d3d3f3;
         }
+
+        /* Styl dla przypisanych pracowników w tabeli */
         .assigned-employee {
             cursor: pointer;
             font-weight: normal;
             color: inherit;
             text-decoration: none;
         }
+
+        /* Styl dla przypisanych pracowników, którzy są wyróżnieni */
         .assigned-employee.highlighted-employee {
             font-weight: bold;
             color: #d9534f;
         }
+
+        /* Styl dla komórek godzinowych, które są klikalne */
         th.hour-cell {
             cursor: pointer;
         }
+
+        /* Styl dla wybranych komórek godzinowych (np. po kliknięciu) */
         th.hour-cell.selected {
             background-color: #ffebcc;
         }
-        /* Efekt hover */
+
+        /* Styl dla efektu hover nad wierszami tabeli */
         tr:hover {
             background-color: #AAAAAA;
-        }		
+        }
     </style>
 </head>
 <body>
     <div class="employee-list" id="employee-list">
-        <!-- Employee buttons will be dynamically added here -->
+        <!-- Przyciski pracowników będą dynamicznie dodawane tutaj -->
     </div>
 
     <div class="schedule-container">
         <table>
-            <thead>
-                <tr>
-                    <th>G</th>
-                    <th style="white-space: nowrap;">Station / Hour</th>
-                    <th class="hour-cell">08:00 - 09:00</th>
-                    <th class="hour-cell">09:00 - 10:00</th>
-                    <th class="hour-cell">10:00 - 11:00</th>
-                    <th class="hour-cell">11:00 - 12:00</th>
-                    <th class="hour-cell">12:00 - 13:00</th>
-                    <th class="hour-cell">13:00 - 14:00</th>
-                    <th class="hour-cell">14:00 - 15:00</th>
-                    <th class="hour-cell">15:00 - 16:00</th>
-                    <th class="hour-cell">16:00 - 17:00</th>
-                    <th class="hour-cell">17:00 - 18:00</th>
-                    <th class="hour-cell">18:00 - 19:00</th>
-                    <th class="hour-cell">19:00 - 20:00</th>
-                </tr>
+            <thead id="schedule-header">
+                <!-- Nagłówki tabeli będą dynamicznie dodawane tutaj -->
             </thead>
             <tbody id="schedule-table">
-                <!-- Schedule rows will be dynamically added here -->
+                <!-- Wiersze harmonogramu będą dynamicznie dodawane tutaj -->
             </tbody>
         </table>
     </div>
 
     <div style="text-align: center; margin-top: 1em;">
+        <label for="start-hour">Start Hour:</label>
+        <input type="number" id="start-hour" min="0" max="23" value="8">
+        <label for="end-hour">End Hour:</label>
+        <input type="number" id="end-hour" min="0" max="23" value="20">
+        <button id="update-hours">Update Hours</button>
         <button id="reset-schedule">Reset Schedule</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+        import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
             authDomain: "emsd-cef45.firebaseapp.com",
@@ -133,22 +154,26 @@
             appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
         const employeeList = document.getElementById('employee-list');
         const scheduleTable = document.getElementById('schedule-table');
+        const scheduleHeader = document.getElementById('schedule-header');
         const resetScheduleButton = document.getElementById('reset-schedule');
+        const updateHoursButton = document.getElementById('update-hours');
 
         let stationsData = {};
         let scheduleData = {};
         let employeesData = {};
+        let hoursData = { startHour: 8, endHour: 20 };
+        let selectedHour = null;
 
         function loadAllData() {
             const stationsRef = ref(database, 'stations');
             const scheduleRef = ref(database, 'schedule');
             const employeesRef = ref(database, 'employees');
+            const hoursRef = ref(database, 'hours');
 
             onValue(stationsRef, (snapshot) => {
                 stationsData = snapshot.val() || {};
@@ -165,20 +190,24 @@
                 renderEmployeeList();
                 renderScheduleTable();
             });
+
+            onValue(hoursRef, (snapshot) => {
+                hoursData = snapshot.val() || { startHour: 8, endHour: 20 };
+                document.getElementById('start-hour').value = hoursData.startHour;
+                document.getElementById('end-hour').value = hoursData.endHour;
+                renderScheduleTable();
+            });
         }
 
         function renderEmployeeList() {
             employeeList.innerHTML = '';
-            const selectedHour = document.querySelector('th.hour-cell.selected');
-            const hour = selectedHour ? parseInt(selectedHour.textContent.split(':')[0], 10) : null;
-
             Object.values(employeesData).forEach(employee => {
                 if (employee.available) {
                     const button = document.createElement('button');
                     button.textContent = employee.name;
                     button.draggable = true;
 
-                    if (hour && isEmployeeAssigned(employee.name, hour)) {
+                    if (selectedHour !== null && isEmployeeAssigned(employee.name, selectedHour)) {
                         button.classList.add('used');
                         button.draggable = false;
                     }
@@ -215,16 +244,42 @@
         }
 
         function renderScheduleTable() {
+            const { startHour, endHour } = hoursData;
+
             scheduleTable.innerHTML = '';
+            scheduleHeader.innerHTML = '';
 
             const sortedStations = Object.values(stationsData).sort((a, b) => a.group.localeCompare(b.group));
+            const hoursArray = [];
+
+            // Handle overnight shifts (endHour < startHour)
+            if (endHour < startHour) {
+                for (let hour = startHour; hour < 24; hour++) {
+                    hoursArray.push(hour);
+                }
+                for (let hour = 0; hour < endHour; hour++) {  // Exclude endHour itself
+                    hoursArray.push(hour);
+                }
+            } else {
+                for (let hour = startHour; hour < endHour; hour++) {  // Exclude endHour itself
+                    hoursArray.push(hour);
+                }
+            }
+
+            const headerRow = `
+                <tr>
+                    <th>G</th>
+                    <th style="white-space: nowrap;">Station / Hour</th>
+                    ${hoursArray.map(hour => `<th class="hour-cell">${hour.toString().padStart(2, '0')}:00 - ${(hour + 1).toString().padStart(2, '0')}:00</th>`).join('')}
+                </tr>
+            `;
+            scheduleHeader.innerHTML += headerRow;
 
             sortedStations.forEach(station => {
                 const row = document.createElement('tr');
 
                 row.innerHTML = `<td>${station.group || ''}</td><td class="station-name" data-station="${station.name}"><strong>${station.name}</strong></td>` +
-                    new Array(12).fill(0).map((_, index) => {
-                        const hour = index + 8;
+                    hoursArray.map(hour => {
                         const employees = (scheduleData[hour]?.[station.name]?.employees) || [];
 
                         return `<td class="drop-target" data-station="${station.name}" data-hour="${hour}">` +
@@ -239,6 +294,7 @@
             enableStationAssignment();
             enableEmployeeRemoval();
             enableHourHighlight();
+            highlightSelectedHour();
         }
 
         function enableDragAndDrop() {
@@ -287,50 +343,49 @@
                     const { name: employeeName } = JSON.parse(e.dataTransfer.getData('text/plain'));
                     const stationName = stationCell.getAttribute('data-station');
 
-                    for (let hour = 8; hour <= 19; hour++) {
-                        if (!isEmployeeAssigned(employeeName, hour)) {
-                            assignEmployeeToStation(employeeName, stationName, hour);
+                    let currentHour = hoursData.startHour;
+                    while (currentHour !== hoursData.endHour) {
+                        if (!isEmployeeAssigned(employeeName, currentHour)) {
+                            assignEmployeeToStation(employeeName, stationName, currentHour);
                         }
+                        currentHour = (currentHour + 1) % 24;
                     }
                 });
             });
         }
 
-function enableEmployeeRemoval() {
-    const assignedEmployees = document.querySelectorAll('.assigned-employee');
+        function enableEmployeeRemoval() {
+            const assignedEmployees = document.querySelectorAll('.assigned-employee');
 
-    assignedEmployees.forEach(employeeSpan => {
-        employeeSpan.addEventListener('click', () => {
-            const employeeName = employeeSpan.getAttribute('data-employee');
-            const cell = employeeSpan.closest('.drop-target');
-            const stationName = cell.getAttribute('data-station');
-            const hour = cell.getAttribute('data-hour');
+            assignedEmployees.forEach(employeeSpan => {
+                employeeSpan.addEventListener('click', () => {
+                    const employeeName = employeeSpan.getAttribute('data-employee');
+                    const cell = employeeSpan.closest('.drop-target');
+                    const stationName = cell.getAttribute('data-station');
+                    const hour = cell.getAttribute('data-hour');
 
-            // Pobierz listę pracowników dla danej stacji i godziny
-            const employees = scheduleData[hour][stationName]?.employees || [];
+                    const employees = scheduleData[hour][stationName]?.employees || [];
+                    scheduleData[hour][stationName].employees = employees.filter(emp => emp !== employeeName);
 
-            // Usuń pracownika z listy
-            scheduleData[hour][stationName].employees = employees.filter(emp => emp !== employeeName);
+                    const updates = {};
+                    updates[`schedule/${hour}/${stationName}/employees`] = scheduleData[hour][stationName].employees;
 
-            // Sprawdź, czy po usunięciu lista pracowników jest pusta
-            if (scheduleData[hour][stationName].employees.length === 0) {
-                // Usuń tylko `target` z węzła, jeśli brak pracowników
-                delete scheduleData[hour][stationName].target;
-            }
+                    // Sprawdź i usuń wpis target jeśli istnieje
+                    if (scheduleData[hour][stationName].target) {
+                        updates[`schedule/${hour}/${stationName}/target`] = null;
+                    }
 
-            // Zaktualizuj dane w bazie
-            set(ref(database, `schedule/${hour}/${stationName}`), scheduleData[hour][stationName])
-                .then(() => {
-                    renderEmployeeList();
-                    renderScheduleTable();
-                })
-                .catch(error => {
-                    console.error('Error updating schedule:', error);
+                    update(ref(database), updates)
+                        .then(() => {
+                            renderEmployeeList();
+                            renderScheduleTable();
+                        })
+                        .catch(error => {
+                            console.error('Błąd podczas aktualizacji harmonogramu:', error);
+                        });
                 });
-        });
-    });
-}
-
+            });
+        }
 
         function enableHourHighlight() {
             const hourCells = document.querySelectorAll('th.hour-cell');
@@ -339,6 +394,7 @@ function enableEmployeeRemoval() {
                 cell.addEventListener('click', () => {
                     hourCells.forEach(target => target.classList.remove('selected'));
                     cell.classList.add('selected');
+                    selectedHour = parseInt(cell.textContent.split(':')[0], 10);
                     renderEmployeeList();
                 });
             });
@@ -376,12 +432,43 @@ function enableEmployeeRemoval() {
             return totalAssignments > limit;
         }
 
+        function highlightSelectedHour() {
+            if (selectedHour !== null) {
+                const hourCells = document.querySelectorAll('th.hour-cell');
+                hourCells.forEach(cell => {
+                    const hour = parseInt(cell.textContent.split(':')[0], 10);
+                    if (hour === selectedHour) {
+                        cell.classList.add('selected');
+                    }
+                });
+            }
+        }
+
         resetScheduleButton.addEventListener('click', () => {
-            scheduleData = {};
-            set(ref(database, 'schedule'), {}).then(() => {
-                renderEmployeeList();
-                renderScheduleTable();
-            });
+            if (confirm("Are you sure you want to reset the schedule?")) {
+                scheduleData = {};
+                set(ref(database, 'schedule'), {}).then(() => {
+                    renderEmployeeList();
+                    renderScheduleTable();
+                });
+            }
+        });
+
+        updateHoursButton.addEventListener('click', () => {
+            if (confirm("Are you sure you want to update the hours?")) {
+                const startHour = parseInt(document.getElementById('start-hour').value, 10);
+                const endHour = parseInt(document.getElementById('end-hour').value, 10);
+
+                if (startHour >= 0 && startHour <= 23 && endHour >= 0 && endHour <= 23 && startHour !== endHour) {
+                    const hours = { startHour, endHour };
+                    set(ref(database, 'hours'), hours).then(() => {
+                        hoursData = hours;
+                        renderScheduleTable();
+                    });
+                } else {
+                    alert('Please enter valid start and end hours.');
+                }
+            }
         });
 
         loadAllData();
