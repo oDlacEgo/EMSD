@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stations</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 1em;
+			font-size: 0.8em;
+        }
+        .form-container {
+            margin-bottom: 1em;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ccc;
+        }
+        th, td {
+            padding: 0.1em;
+            text-align: center;
+        }
+        .editable {
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .editable input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+        }
+        /* Efekt hover */
+        tr:hover {
+            background-color: #AAAAAA;
+        }		
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <label for="station-name">Add Station:</label>
+        <input type="text" id="station-name" placeholder="Enter station name">
+        <label for="station-group">Group:</label>
+        <input type="text" id="station-group" placeholder="Enter group name">
+        <label for="station-limit">Employee Limit:</label>
+        <input type="number" id="station-limit" placeholder="Enter limit" min="1" value="1">
+        <label for="station-hour-limit">Hours per Employee:</label>
+        <input type="number" id="station-hour-limit" placeholder="Enter hours limit" min="1" value="1">
+        <button id="add-station">Add Station</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Station</th>
+                <th>Group</th>
+                <th>Employee Limit</th>
+                <th>Hours per Employee</th>
+                <th>Remove</th>
+            </tr>
+        </thead>
+        <tbody id="station-table">
+            <!-- Rows will be dynamically added here -->
+        </tbody>
+    </table>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, remove, push } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
+            authDomain: "emsd-cef45.firebaseapp.com",
+            databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "emsd-cef45",
+            storageBucket: "emsd-cef45.appspot.com",
+            messagingSenderId: "573007211940",
+            appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        const addStationButton = document.getElementById('add-station');
+        const stationNameInput = document.getElementById('station-name');
+        const stationGroupInput = document.getElementById('station-group');
+        const stationLimitInput = document.getElementById('station-limit');
+        const stationHourLimitInput = document.getElementById('station-hour-limit');
+        const stationTable = document.getElementById('station-table');
+
+        function loadStations() {
+            const stationsRef = ref(database, 'stations');
+            onValue(stationsRef, (snapshot) => {
+                const stations = snapshot.val();
+                stationTable.innerHTML = '';
+
+                if (stations) {
+                    // Sort stations alphabetically by group
+                    const sortedStations = Object.keys(stations).sort((a, b) => {
+                        const groupA = stations[a].group.toLowerCase();
+                        const groupB = stations[b].group.toLowerCase();
+                        return groupA.localeCompare(groupB);
+                    });
+
+                    sortedStations.forEach((id) => {
+                        addStationRow(id, stations[id]);
+                    });
+                }
+            });
+        }
+
+        function saveStation(id, station) {
+            set(ref(database, `stations/${id}`), station);
+        }
+
+        function addStationRow(id, station) {
+            const row = document.createElement('tr');
+
+            row.innerHTML = `
+                <td>${station.name}</td>
+                <td>${station.group}</td>
+                <td class="editable" data-key="limit">${station.limit}</td>
+                <td class="editable" data-key="hourLimit">${station.hourLimit}</td>
+                <td><button class="remove-station">Remove</button></td>
+            `;
+
+            stationTable.appendChild(row);
+
+            const removeButton = row.querySelector('.remove-station');
+            removeButton.addEventListener('click', () => {
+                remove(ref(database, `stations/${id}`));
+            });
+
+            const editableCells = row.querySelectorAll('.editable');
+            editableCells.forEach((cell) => {
+                cell.addEventListener('click', () => makeCellEditable(cell, id, station));
+            });
+        }
+
+        function makeCellEditable(cell, id, station) {
+            const originalContent = cell.textContent;
+            const input = document.createElement('input');
+            input.value = originalContent;
+            cell.textContent = '';
+            cell.appendChild(input);
+            input.focus();
+
+            input.addEventListener('blur', () => {
+                const newValue = input.value.trim();
+                const key = cell.getAttribute('data-key');
+                if (newValue && newValue !== originalContent && key) {
+                    station[key] = newValue;
+                    saveStation(id, station);
+                }
+                cell.textContent = newValue || originalContent;
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    input.blur();
+                }
+            });
+        }
+
+        addStationButton.addEventListener('click', () => {
+            const stationName = stationNameInput.value.trim();
+            const stationGroup = stationGroupInput.value.trim();
+            const stationLimit = stationLimitInput.value.trim();
+            const stationHourLimit = stationHourLimitInput.value.trim();
+
+            if (stationName && stationGroup && stationLimit && stationHourLimit) {
+                const stationsRef = ref(database, 'stations');
+                const newStationRef = push(stationsRef);
+                const station = {
+                    name: stationName,
+                    group: stationGroup,
+                    limit: stationLimit,
+                    hourLimit: stationHourLimit
+                };
+                set(newStationRef, station);
+
+                stationNameInput.value = '';
+                stationGroupInput.value = '';
+                stationLimitInput.value = '1';
+                stationHourLimitInput.value = '1';
+            } else {
+                alert('Please enter all station details!');
+            }
+        });
+
+        loadStations();
+    </script>
+</body>
+</html>
