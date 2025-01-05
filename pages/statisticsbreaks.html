@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statistics</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 1em;
+      font-size: 1em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1em;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 0.5em;
+      text-align: center;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f4f4f4;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #AAAAAA;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .large-break {
+      display: inline-block;
+      width: 1em;
+      height: 1em;
+      background-color: orange;
+      border-radius: 50%;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <table id="performanceTable">
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Station</th>
+        <th>Hours</th>
+        <th>Targets</th>
+        <th>Total Working Hours</th>
+        <th>Total Target</th>
+        <th>Average Target/Hour</th>
+        <th>Breaks</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Data will be dynamically added here -->
+    </tbody>
+  </table>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+    import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDUO5c-1RSGpGspdAStcGmrEVb0qD0FbnU",
+      authDomain: "emsd-cef45.firebaseapp.com",
+      databaseURL: "https://emsd-cef45-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "emsd-cef45",
+      storageBucket: "emsd-cef45.appspot.com",
+      messagingSenderId: "573007211940",
+      appId: "1:573007211940:web:651a9d8785eb14a0ea2531"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    async function fetchData() {
+      const dbRef = ref(database);
+      try {
+        const scheduleSnapshot = await get(child(dbRef, "schedule"));
+        const employeesSnapshot = await get(child(dbRef, "employees"));
+        if (scheduleSnapshot.exists() && employeesSnapshot.exists()) {
+          const scheduleData = scheduleSnapshot.val();
+          const employeesData = employeesSnapshot.val();
+
+          console.log("Schedule Data:", scheduleData);
+          console.log("Employees Data:", employeesData);
+
+          // Grouping data by employee and station
+          const performanceData = {};
+          Object.entries(scheduleData).forEach(([hour, stations]) => {
+            Object.entries(stations).forEach(([station, data]) => {
+              if (data.employees && data.employees.length > 0) {
+                data.employees.forEach((employeeName) => {
+                  // Find employee ID by name
+                  const employeeId = Object.keys(employeesData).find(id => employeesData[id].name === employeeName);
+                  if (!employeeId) {
+                    console.log(`No employee data found for ${employeeName}`);
+                    return;
+                  }
+                  if (!performanceData[employeeId]) {
+                    performanceData[employeeId] = {};
+                  }
+                  if (!performanceData[employeeId][station]) {
+                    performanceData[employeeId][station] = {
+                      hours: [],
+                      targets: [],
+                    };
+                  }
+                  performanceData[employeeId][station].hours.push(hour);
+                  performanceData[employeeId][station].targets.push(data.target || 0);
+                });
+              }
+            });
+          });
+
+          console.log("Performance Data:", performanceData);
+
+          // Displaying data
+          displayPerformance(performanceData, employeesData);
+        } else {
+          console.log("No data available in Firebase");
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
+
+    function isBreakHour(hour, break1, break2) {
+      const hourInt = parseInt(hour, 10);
+      const break1Hour = break1 ? parseInt(break1.split(":")[0], 10) : null;
+      const break2Hour = break2 ? parseInt(break2.split(":")[0], 10) : null;
+      return hourInt === break1Hour || hourInt === break2Hour;
+    }
+
+    function displayPerformance(data, employeesData) {
+      const tableBody = document.querySelector("#performanceTable tbody");
+      tableBody.innerHTML = ""; // Clear the table
+
+      console.log("Displaying performance data:", data);
+
+      Object.entries(data).forEach(([employeeId, stations]) => {
+        const employeeData = employeesData[employeeId];
+        if (!employeeData) {
+          console.log(`No employee data found for ${employeeId}`);
+          return;
+        }
+
+        const stationKeys = Object.keys(stations);
+        let isFirstRow = true;
+
+        stationKeys.forEach((station) => {
+          const records = stations[station];
+          const hours = records.hours.map(hour => {
+            if (isBreakHour(hour, employeeData.break1, employeeData.break2)) {
+              return `${hour} <span class="large-break"></span>`;
+            }
+            return hour;
+          }).join("<br>"); // Hours in new lines
+
+          const targets = records.targets.map((target, index) => {
+            const hour = records.hours[index];
+            if (isBreakHour(hour, employeeData.break1, employeeData.break2)) {
+              return `${target} <span class="large-break"></span>`;
+            }
+            return target;
+          }).join("<br>"); // Targets in new lines
+
+          const totalHours = records.hours.length;
+          let breakTime = 0;
+
+          // Calculate break time only for the hours being currently worked
+          records.hours.forEach(hour => {
+            if (isBreakHour(hour, employeeData.break1, employeeData.break2)) {
+              breakTime += 0.5; // 30 minutes for each break
+            }
+          });
+
+          const effectiveTotalHours = totalHours - breakTime; // Effective total working hours
+          const totalTarget = records.targets.reduce((a, b) => a + b, 0); // Total target
+          const avgTarget = (totalTarget / effectiveTotalHours).toFixed(2); // Average target per hour
+          const breaks = `${employeeData.break1 || 'N/A'} / ${employeeData.break2 || 'N/A'}`;
+
+          const row = document.createElement("tr");
+
+          if (isFirstRow) {
+            // Add employee cell with rowspan
+            const employeeCell = document.createElement("td");
+            employeeCell.rowSpan = stationKeys.length;
+            employeeCell.textContent = employeeData.name;
+            row.appendChild(employeeCell);
+            isFirstRow = false;
+          }
+
+          const stationCell = document.createElement("td");
+          stationCell.textContent = station;
+          stationCell.rowSpan = 1; // Assuming no merge for simplicity
+          row.appendChild(stationCell);
+
+          row.innerHTML += `
+            <td>${hours}</td>
+            <td>${targets}</td>
+            <td>${effectiveTotalHours}</td>
+            <td>${totalTarget}</td>
+            <td>${avgTarget}</td>
+            <td>${breaks}</td>
+          `;
+          tableBody.appendChild(row);
+        });
+      });
+    }
+
+    fetchData();
+  </script>
+</body>
+</html>
